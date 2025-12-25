@@ -193,12 +193,17 @@ module.exports = async function (databaseType, threadModel, api, fakeGraphql) {
 				}
 				threadInfo = threadInfo || await api.getThreadInfo(threadID);
 				const { threadName, userInfo, adminIDs } = threadInfo;
+				
+				// 🟢 FIX 1: userInfo অ্যারে না হলে [] ব্যবহার করা হচ্ছে যাতে .reduce() এ error না আসে
+				const safeUserInfo = userInfo || []; 
+				
 				const newAdminsIDs = adminIDs.reduce(function (_, b) {
 					_.push(b.id);
 					return _;
 				}, []);
 
-				const newMembers = userInfo.reduce(function (arr, user) {
+				// safeUserInfo ব্যবহার করা হচ্ছে
+				const newMembers = safeUserInfo.reduce(function (arr, user) {
 					const userID = user.id;
 					arr.push({
 						userID,
@@ -269,9 +274,15 @@ module.exports = async function (databaseType, threadModel, api, fakeGraphql) {
 					const threadInfo = await get_(threadID);
 					newThreadInfo = newThreadInfo || await api.getThreadInfo(threadID);
 					const { userInfo, adminIDs, nicknames } = newThreadInfo;
+					
+					// 🟢 FIX 2: userInfo অ্যারে না হলে [] ব্যবহার করা হচ্ছে যাতে for...of এ error না আসে
+					const safeNewUserInfo = userInfo || [];
+					
 					let oldMembers = threadInfo.members;
 					const newMembers = [];
-					for (const user of userInfo) {
+					
+					// safeNewUserInfo ব্যবহার করা হচ্ছে
+					for (const user of safeNewUserInfo) {
 						const userID = user.id;
 						const indexUser = _.findIndex(oldMembers, { userID });
 						const oldDataUser = oldMembers[indexUser] || {};
