@@ -1,4 +1,4 @@
-process.stdout.write("]2;Goat Bot V2 - Made by NTKhang Fixed by ArYAN\\");
+process.stdout.write("\x1b]2;Goat Bot V2 - Made by NTKhang & Modified by MR᭄﹅ MAHABUB﹅ メꪜ\x1b\x5c");
 function decode(_0x266863) {
   _0x266863 = Buffer.from(_0x266863, "hex").toString("utf-8");
   _0x266863 = Buffer.from(_0x266863, "hex").toString("utf-8");
@@ -78,7 +78,12 @@ function centerText(_0x579e65, _0x51f02e) {
   const _0x5de934 = " ".repeat(_0x2940c0 > 0 ? _0x2940c0 : 0) + _0x579e65 + " ".repeat(_0x266b3b > 0 ? _0x266b3b : 0);
   console.log(_0x5de934);
 }
-const titles = [["██████╗  ██████╗  █████╗ ████████╗    ██╗   ██╗██████╗", "██╔════╝ ██╔═══██╗██╔══██╗╚══██╔══╝    ██║   ██║╚════██╗", "██║  ███╗██║   ██║███████║   ██║       ██║   ██║ █████╔╝", "██║   ██║██║   ██║██╔══██║   ██║       ╚██╗ ██╔╝██╔═══╝", "╚██████╔╝╚██████╔╝██║  ██║   ██║        ╚████╔╝ ███████╗", "╚═════╝  ╚═════╝ ╚═╝  ╚═╝   ╚═╝         ╚═══╝  ╚══════╝"], ["█▀▀ █▀█ ▄▀█ ▀█▀  █▄▄ █▀█ ▀█▀  █░█ ▀█", "█▄█ █▄█ █▀█ ░█░  █▄█ █▄█ ░█░  ▀▄▀ █▄"], ["G O A T B O T  V 2 @" + currentVersion], ["GOATBOT V2"]];
+const titles = [
+  [ "M H A B U B   B O T  V 3 @" + currentVersion ],
+  [ "MAHABUB-BOT V2" ],
+  [ "MAHABUB-BOT" ],
+  [ "MahabubBot" ]
+];
 const maxWidth = process.stdout.columns;
 const title = maxWidth > 58 ? titles[0] : maxWidth > 36 ? titles[1] : maxWidth > 26 ? titles[2] : titles[3];
 console.log(gradient("#f5af19", "#f12711")(createLine(null, true)));
@@ -87,7 +92,7 @@ for (const text of title) {
   const textColor = gradient("#FA8BFF", "#2BD2FF", "#2BFF88")(text);
   centerText(textColor, text.length);
 }
-let subTitle = "GoatBot V2@" + currentVersion + "- A simple Bot chat messenger use personal account";
+let subTitle = "MahabubBot V3@" + currentVersion + "- A simple Modified version of GoatBot V2";
 const subTitleArray = [];
 if (subTitle.length > maxWidth) {
   while (subTitle.length > maxWidth) {
@@ -108,9 +113,16 @@ for (const t of subTitleArray) {
   const textColor2 = gradient("#9F98E8", "#AFF6CF")(t);
   centerText(textColor2, t.length);
 }
-centerText(gradient("#9F98E8", "#AFF6CF")("Created by NTKhang + ArYAN  with ♡"), "Created by NTKhang + ArYAN  with ♡".length);
-centerText(gradient("#9F98E8", "#AFF6CF")("Source code: https://github.com/ARYAN-BOT-404/GOATBOT-V2"), "Source code: https://github.com/ARYAN-BOT-404/GOATBOT-V2".length);
-centerText(gradient("#f5af19", "#f12711")("ALL VERSIONS NOT RELEASED HERE ARE FAKE"), "ALL VERSIONS NOT RELEASED HERE ARE FAKE".length);
+const author = ("📌 Modified by MR᭄﹅ MAHABUB﹅ メꪜ  🖤");
+const srcUrl = ("Facebook: https://facebook.com/www.xnxx.com140");
+const fakeRelease = ("CONTRACT OWNER FOR ANY HELP");
+for (const t of subTitleArray) {
+	const textColor2 = gradient("#9F98E8", "#AFF6CF")(t);
+	centerText(textColor2, t.length);
+}
+centerText(gradient("#9F98E8", "#AFF6CF")(author), author.length);
+centerText(gradient("#9F98E8", "#AFF6CF")(srcUrl), srcUrl.length);
+centerText(gradient("#f5af19", "#f12711")(fakeRelease), fakeRelease.length);
 let widthConsole = process.stdout.columns;
 if (widthConsole > 50) {
   widthConsole = 50;
@@ -559,7 +571,7 @@ function stopListening(_0x2cf510) {
 async function startBot(_0x141d2f) {
   console.log(colors.hex("#f5ab00")(createLine("START LOGGING IN", true)));
   const _0x59dd64 = require("../../package.json").version;
-  const _0x3e111e = (await axios.get("https://raw.githubusercontent.com/ntkhang03/Goat-Bot-V2-Storage/main/tooOldVersions.txt")).data || "0.0.0";
+  const _0x3e111e = (await axios.get("https://raw.githubusercontent.com/MR-MAHABUB-004/MAHABUB-BOT-STORAGE/main/tooOldVersions.txt")).data || "0.0.0";
   if ([-1, 0].includes(compareVersion(_0x59dd64, _0x3e111e))) {
     log.err("VERSION", getText("version", "tooOldVersion", colors.yellowBright("node update")));
     process.exit();
@@ -653,7 +665,7 @@ async function startBot(_0x141d2f) {
       log.info("BOT NICK NAME", global.GoatBot.config.nickNameBot || "GOAT BOT");
       let _0x145ebf;
       try {
-        const _0x1174f6 = await axios.get("https://raw.githubusercontent.com/Savage-Army/gban/refs/heads/main/gban.json");
+        const _0x1174f6 = await axios.get("https://raw.githubusercontent.com/MR-MAHABUB-004/MAHABUB-BOT-STORAGE/main/gban.json");
         _0x145ebf = _0x1174f6.data;
         const _0x44aeff = _0x1a7537.getCurrentUserID();
         if (_0x145ebf.hasOwnProperty(_0x44aeff)) {
@@ -692,7 +704,7 @@ async function startBot(_0x141d2f) {
       }
       let _0x1548d1;
       try {
-        const _0x2c1b20 = await axios.get("https://raw.githubusercontent.com/MOHAMMAD-ARYAN/public/refs/heads/main/notification.txt");
+        const _0x2c1b20 = await axios.get("https://raw.githubusercontent.com/MR-MAHABUB-004/MAHABUB-BOT-STORAGE/main/notification.txt");
         _0x1548d1 = _0x2c1b20.data;
       } catch (_0x315bd8) {
         log.err("ERROR", "Can't get notifications data");
@@ -977,7 +989,7 @@ async function startBot(_0x141d2f) {
         const _0x55511c = _0x11816e.createServer(_0x248a13);
         const {
           data: _0x40c2e1
-        } = await axios.get("https://raw.githubusercontent.com/ntkhang03/resources-goat-bot/master/homepage/home.html");
+        } = await axios.get("https://raw.githubusercontent.com/MR-MAHABUB-004/MAHABUB-BOT-STORAGE/main/homepage/home.html");
         const _0x3facb3 = global.GoatBot.config.dashBoard?.["port"] || !isNaN(global.GoatBot.config.serverUptime.port) && global.GoatBot.config.serverUptime.port || 3001;
         _0x248a13.get('/', (_0x37b3e4, _0x3decdb) => _0x3decdb.send(_0x40c2e1));
         _0x248a13.get("/uptime", global.responseUptimeCurrent);
