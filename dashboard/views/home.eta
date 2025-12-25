@@ -7,7 +7,7 @@
 	title: "Home"
 }); %>
 
-<h1 class="text-center mt-3">Welcome to Goat Bot!</h1>
+<h1 class="text-center mt-3">Welcome to MahabubBot!</h1>
 
 <ul class="text-center d-block list-unstyled">
 	<li> <i class="fas fa-user-shield"></i> Moderation</li>
@@ -17,11 +17,11 @@
 <div class="text-center mb-3">
 <% if (global.botID) { %>
 	<button class="btn btn-phoenix-primary btn-block rounded-5" id="addme">
-		Thêm bot vào box chat của bạn
+		Add bots to your chat box.
 	</button>
 <% } else { %>
 	<button class="btn btn-phoenix-danger btn-block rounded-5">
-		Hiện tại bot đang offline
+		The bot is currently offline.
 	</button>
 <% } %>
 </div>
@@ -33,9 +33,8 @@
 	<div class="container">
 		<div class="row">
 			<div class="col-lg-8 mx-auto">
-				<h2 class="text-center mb-4">Dễ dàng sử dụng</h2>
-				<p class="text-center">Tại đây bạn có thể tùy chỉnh lời chào thành viên mới, tạm biệt thành viên rời khỏi
-					box, v.v. và nhiều hơn nữa với bảng điều khiển dễ sử dụng và trực quan nhất!</p>
+				<h2 class="text-center mb-4">Easy to use</h2>
+				<p class="text-center">Here you can customize welcome messages for new members, farewell messages for members leaving the box, etc., and much more with the easiest-to-use and most intuitive control panel.</p>
 			</div>
 		</div>
 	</div>
@@ -45,10 +44,9 @@
 	<div class="container">
 		<div class="row">
 			<div class="col-lg-8 mx-auto">
-				<h2 class="text-center mb-4">Gửi lời chào khi có người dùng mới tham gia vào nhóm chat</h2>
-				<p class="text-center">Tận dụng thông điệp chào mừng để thông báo cho những người mới đến về các quy tắc
-					nhóm chat, hoặc các sự kiện đang diễn ra của bạn. Bạn có thể thiết kế thiệp chào mừng của riêng
-					bạn hoặc giữ nó đơn giản.</p>
+				<h2 class="text-center mb-4">Send a greeting when a new user joins the group chat.</h2>
+				<p class="text-center">Use the welcome message to inform newcomers about the rules.
+					Your group chat, or ongoing events. You can design your own welcome card or keep it simple.</p>
 			</div>
 		</div>
 	</div>
@@ -58,8 +56,8 @@
 	<div class="container">
 		<div class="row">
 			<div class="col-lg-8 mx-auto">
-				<h2 class="text-center mb-4">Dễ dàng tạo các lệnh tùy chỉnh của riêng bạn</h2>
-				<p class="text-center">Goat Bot cung cấp cho bạn toàn quyền kiểm soát để tạo ra lệnh của riêng bạn.</p>
+				<h2 class="text-center mb-4">Easily create your own custom commands.</h2>
+				<p class="text-center">MahabubBot gives you complete control to create your own commands.</p>
 			</div>
 		</div>
 	</div>
@@ -69,9 +67,8 @@
 	<div class="container">
 		<div class="row">
 			<div class="col-lg-8 mx-auto">
-				<h2 class="text-center mb-4">Cấp độ và exp trong box chat của bạn</h2>
-				<p class="text-center">Sử dụng hệ thống chúng tôi để xác định và thưởng cho các thành viên tích cực nhất
-					trong nhóm chat của bạn.</p>
+				<h2 class="text-center mb-4">Your level and experience points in the chat box.</h2>
+				<p class="text-center">Use our system to identify and reward the most active members in your group chat.</p>
 			</div>
 		</div>
 	</div>
@@ -81,9 +78,8 @@
 	<div class="container">
 		<div class="row">
 			<div class="col-lg-8 mx-auto">
-				<h2 class="text-center mb-4">Người dùng</h2>
-				<p class="text-center">Hiện tại bot đã được thêm vào tổng cộng <b><%=global.db.allThreadData.length%> nhóm
-					chat</b> và được sử dụng bởi <b><%=global.db.allUserData.length%> người dùng</b>.</p>
+				<h2 class="text-center mb-4">User</h2>
+				<p class="text-center">Currently, a total of bots have been added. <b><%=global.db.allThreadData.length%> group chat</b> and used by <b><%=global.db.allUserData.length%> users</b>.</p>
 			</div>
 		</div>
 	</div>
