@@ -1,11 +1,11 @@
 const axios = require("axios");
-const xyz = "aryan";
 
 module.exports = {
   config: {
     name: "imgur",
-    version: "0.0.1",
-    author: "ArYAN",
+    aliases: ["imagegur","imgbb"],
+    version: "1.0",
+    author: "MR᭄﹅ MAHABUB﹅ メꪜ",
     countDown: 0,
     role: 0,
     shortDescription: "Upload an image to Imgur",
@@ -16,8 +16,6 @@ module.exports = {
 
   onStart: async function ({ api, event, args }) {
     try {
-      api.setMessageReaction("⏳", event.messageID, () => {}, true);
-
       let imageUrl = "";
 
       if (event.messageReply && event.messageReply.attachments.length > 0) {
@@ -27,7 +25,6 @@ module.exports = {
       }
 
       if (!imageUrl) {
-        api.setMessageReaction("", event.messageID, () => {}, true); 
         return api.sendMessage(
           "❌ Please reply to an image, video, or provide a URL!",
           event.threadID,
@@ -36,18 +33,22 @@ module.exports = {
       }
 
       const response = await axios.get(
-        `https://${xyz}-xy-z.vercel.app/imgur?url=${encodeURIComponent(imageUrl)}`
+        `https://imgur-upload-psi.vercel.app/mahabub?url=${encodeURIComponent(
+          imageUrl
+        )}`
       );
 
-      if (response.data && response.data.success && response.data.link) {
-        api.setMessageReaction("✅", event.messageID, () => {}, true);
+      if (response.data && response.data.url) {
+        let fileType = "Image";
+        if (response.data.url.endsWith(".mp4")) fileType = "Video";
+        else if (response.data.url.endsWith(".gif")) fileType = "GIF";
+
         return api.sendMessage(
-          `${response.data.link}`,
+          `✅ ${fileType} uploaded successfully!\n\n🔗 URL: ${response.data.url}`,
           event.threadID,
           event.messageID
         );
       } else {
-        api.setMessageReaction("", event.messageID, () => {}, true);
         return api.sendMessage(
           "❌ Failed to upload the image.",
           event.threadID,
@@ -56,7 +57,6 @@ module.exports = {
       }
     } catch (error) {
       console.error(error);
-      api.setMessageReaction("", event.messageID, () => {}, true);
       return api.sendMessage(
         "⚠️ An error occurred while uploading the image.",
         event.threadID,
