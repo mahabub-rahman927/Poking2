@@ -31,6 +31,7 @@
   },
   "nickNameBot": "🪽🐰 Your Baby🔥🩷",
   "prefix": "!",
+  "api": "https://mahabub-apis.fun",
   "database": {
     "type": "mongodb",
     "uriMongodb": "mongodb+srv://mahabub:0000@cluster0.wg033zv.mongodb.net/?appName=Cluster0",
