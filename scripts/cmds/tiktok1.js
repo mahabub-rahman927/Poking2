@@ -1,10 +1,10 @@
 const axios = require("axios");
-const fs = require("fs");
+const fs = require("fs-extra");
 const path = require("path");
 
 module.exports = {
   config: {
-    name: "tiktok",
+    name: "tiktok1",
     version: "1.0",
     author: "Chitron Bhattacharjee",
     countDown: 5,
