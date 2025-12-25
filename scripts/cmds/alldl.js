@@ -58,7 +58,7 @@ module.exports = {
 
     try {
       const response = await fetchWithRetry(
-        `${apiBaseURL}/api/alldl?url=${encodeURIComponent(videoLink)}`
+        `${apiBaseURL}/mahabub/dl?url=${encodeURIComponent(videoLink)}`
       );
 
       const { platform, title, hd, sd } = response.data;
