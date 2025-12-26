@@ -50,7 +50,7 @@ module.exports = async function (_0x423297, _0xce5d8c, _0x543fe1, _0x40a3c5, _0x
   let _0x15552a;
   let _0x15df96;
   for (const _0x50f23c of _0x8d8a9b) {
-    const _0x5cbdca = _0x50f23c == "cmds" ? _0x3d33a0("MAHABUB_BRO.. LOAD COMMANDS") : _0x3d33a0("ArYAN LOAD COMMANDS EVENT");
+    const _0x5cbdca = _0x50f23c == "cmds" ? _0x3d33a0("MAHABUB_BRO.. LOAD COMMANDS") : _0x3d33a0("MAHABUB_BRO.. COMMANDS EVENT");
     console.log(colors.hex("#f5ab00")(_0x5cbdca));
     if (_0x50f23c == "cmds") {
       _0x2b5a43 = "command";
@@ -82,7 +82,7 @@ module.exports = async function (_0x423297, _0xce5d8c, _0x543fe1, _0x40a3c5, _0x
               packageAlready.push(_0x2cf529);
               if (!existsSync(process.cwd() + "/node_modules/" + _0x2cf529)) {
                 const _0x4d8c99 = setInterval(() => {
-                  loading.info("ArYAN PACKAGE", spinner[count % spinner.length] + " Installing package " + colors.yellow(_0x2cf529) + " for " + _0x2b5a43 + " " + colors.yellow(_0x2673d8));
+                  loading.info("MAHABUB_BRO.. PACKAGE", spinner[count % spinner.length] + " Installing package " + colors.yellow(_0x2cf529) + " for " + _0x2b5a43 + " " + colors.yellow(_0x2673d8));
                   count++;
                 }, 80);
                 try {
