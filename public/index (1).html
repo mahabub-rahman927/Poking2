@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoatBot Dashboard | Ultra Neon</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&family=JetBrains+Mono&display=swap');
+
+        :root {
+            --neon-blue: #00f2ff;
+            --neon-purple: #9d00ff;
+            --neon-pink: #ff007a;
+            --bg-dark: #030712;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            cursor: default;
+        }
+
+        body {
+            background: var(--bg-dark);
+            color: white;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            /* Cyber Grid Effect */
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        /* Animated Background Orbs */
+        .orb {
+            position: fixed;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            filter: blur(100px);
+            z-index: -1;
+            opacity: 0.15;
+            animation: orbMove 20s infinite alternate;
+        }
+        .orb-1 { background: var(--neon-blue); top: -10%; left: -10%; }
+        .orb-2 { background: var(--neon-purple); bottom: -10%; right: -10%; animation-delay: -5s; }
+
+        @keyframes orbMove {
+            from { transform: translate(0, 0) scale(1); }
+            to { transform: translate(100px, 50px) scale(1.1); }
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Mouse Tracking Neon Effect */
+        .stat-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
+        }
+
+        .stat-card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(255,255,255,0.1) 0%, transparent 50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
+        .jetbrains { font-family: 'JetBrains Mono', monospace; }
+
+        /* Progress Bar Neon Glow */
+        .progress-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 10px;
+            box-shadow: 0 0 10px currentColor;
+            transition: width 1s ease-in-out;
+        }
+
+        /* Neon Buttons */
+        .btn-neon {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-neon:hover {
+            background: white;
+            color: black;
+            box-shadow: 0 0 20px white;
+            transform: scale(1.02);
+        }
+
+        .btn-danger-neon:hover {
+            background: var(--neon-pink);
+            color: white;
+            border-color: var(--neon-pink);
+            box-shadow: 0 0 25px var(--neon-pink);
+        }
+
+        .status-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 10px #10b981;
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.4); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-10">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <div class="max-w-7xl mx-auto">
+        <header class="glass-card p-6 md:p-8 mb-8 flex flex-col md:flex-row justify-between items-center">
+            <div>
+                <div class="flex items-center gap-2 mb-2">
+                    <div class="status-dot"></div>
+                    <span class="text-xs font-bold tracking-widest text-emerald-400 uppercase">System Active</span>
+                </div>
+                <h1 class="text-3xl md:text-5xl font-extrabold tracking-tighter text-white">
+                    MAHABUB<span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">-BOT</span>
+                </h1>
+            </div>
+            <div class="flex gap-4 mt-6 md:mt-0">
+                <a href="/appstate" class="btn-neon px-6 py-3 rounded-xl font-bold text-sm">🔑 APPSTATE</a>
+                <button onclick="restartBot()" class="btn-neon btn-danger-neon px-6 py-3 rounded-xl font-bold text-sm">🔄 RESTART</button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="glass-card stat-card p-6">
+                <div class="flex justify-between items-center mb-4 text-slate-400">
+                    <span class="text-xs font-bold uppercase tracking-widest">CPU Load</span>
+                    <span class="text-xl">💻</span>
+                </div>
+                <div class="text-3xl font-black jetbrains mb-4" id="cpu">0%</div>
+                <div class="progress-bar">
+                    <div id="cpu-bar" class="progress-fill bg-cyan-400" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="glass-card stat-card p-6">
+                <div class="flex justify-between items-center mb-4 text-slate-400">
+                    <span class="text-xs font-bold uppercase tracking-widest">Memory</span>
+                    <span class="text-xl">🧠</span>
+                </div>
+                <div class="text-3xl font-black jetbrains mb-4" id="memory">0 MB</div>
+                <div class="progress-bar">
+                    <div id="memory-bar" class="progress-fill bg-purple-500" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="glass-card stat-card p-6">
+                <div class="flex justify-between items-center mb-4 text-slate-400">
+                    <span class="text-xs font-bold uppercase tracking-widest">Uptime</span>
+                    <span class="text-xl">⏱️</span>
+                </div>
+                <div class="text-3xl font-black jetbrains mb-4" id="uptime">0h 0m</div>
+                <div class="text-[10px] text-emerald-400 font-bold uppercase">Stable Connection</div>
+            </div>
+
+            <div class="glass-card stat-card p-6">
+                <div class="flex justify-between items-center mb-4 text-slate-400">
+                    <span class="text-xs font-bold uppercase tracking-widest">Core Status</span>
+                    <span class="text-xl">📡</span>
+                </div>
+                <div class="text-3xl font-black jetbrains text-emerald-400 mb-4">ONLINE</div>
+                <div class="text-[10px] text-slate-500 font-bold uppercase">Region: Global-Alpha</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 glass-card p-8">
+                <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+                    <span class="text-cyan-400">📊</span> System Specs
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="p-4 border-b border-white/5 flex justify-between group hover:bg-white/5 transition-all">
+                        <span class="text-slate-400">Platform</span>
+                        <span id="platform" class="font-bold jetbrains">Loading...</span>
+                    </div>
+                    <div class="p-4 border-b border-white/5 flex justify-between group hover:bg-white/5 transition-all">
+                        <span class="text-slate-400">Node</span>
+                        <span id="nodeVersion" class="font-bold jetbrains">Loading...</span>
+                    </div>
+                    <div class="p-4 border-b border-white/5 flex justify-between group hover:bg-white/5 transition-all">
+                        <span class="text-slate-400">Arch</span>
+                        <span id="arch" class="font-bold jetbrains">Loading...</span>
+                    </div>
+                    <div class="p-4 border-b border-white/5 flex justify-between group hover:bg-white/5 transition-all">
+                        <span class="text-slate-400">Cores</span>
+                        <span id="cpuCores" class="font-bold jetbrains">Loading...</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card p-8">
+                <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+                    <span class="text-purple-400">⚙️</span> Control
+                </h2>
+                <div class="space-y-3">
+                    <button onclick="refreshStats()" class="w-full btn-neon p-4 rounded-xl text-left flex justify-between group">
+                        <span>Sync Data</span>
+                        <span class="opacity-0 group-hover:opacity-100 transition-all">↺</span>
+                    </button>
+                    <button onclick="viewLogs()" class="w-full btn-neon p-4 rounded-xl text-left flex justify-between group">
+                        <span>Main Logs</span>
+                        <span class="opacity-0 group-hover:opacity-100 transition-all">📖</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mouse Tracking Logic
+        document.querySelectorAll('.stat-card').forEach(card => {
+            card.onmousemove = e => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                card.style.setProperty("--x", `${x}px`);
+                card.style.setProperty("--y", `${y}px`);
+            };
+        });
+
+        // Backend Integration
+        async function refreshStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const data = await response.json();
+                
+                document.getElementById('cpu').innerText = data.cpu + '%';
+                document.getElementById('cpu-bar').style.width = data.cpu + '%';
+                
+                document.getElementById('memory').innerText = data.memoryUsed + ' MB';
+                document.getElementById('memory-bar').style.width = (data.memoryUsed / data.memoryTotal * 100) + '%';
+                
+                document.getElementById('uptime').innerText = data.uptime;
+                document.getElementById('platform').innerText = data.platform;
+                document.getElementById('nodeVersion').innerText = data.nodeVersion;
+                document.getElementById('arch').innerText = data.arch;
+                document.getElementById('cpuCores').innerText = data.cpuCores;
+            } catch (e) { console.log("System Sync Error"); }
+        }
+
+        setInterval(refreshStats, 3000);
+        refreshStats();
+    </script>
+</body>
+</html>

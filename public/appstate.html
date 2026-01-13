@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appstate Editor - MahabubBot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap');
+
+        :root {
+            --neon-blue: #00f2ff;
+            --neon-purple: #bc13fe;
+            --neon-green: #39ff14;
+            --bg-dark: #050505;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: white;
+            font-family: 'Space Grotesk', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            perspective: 1000px;
+        }
+
+        .mesh-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(0, 242, 255, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(188, 19, 254, 0.15) 0%, transparent 40%);
+            filter: blur(80px);
+            animation: meshMove 15s ease-in-out infinite alternate;
+        }
+
+        @keyframes meshMove {
+            0% { transform: scale(1) translate(0,0); }
+            100% { transform: scale(1.2) translate(5%, 5%); }
+        }
+
+        .neon-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+            position: relative;
+        }
+
+        .neon-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(0, 242, 255, 0.5);
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.1);
+        }
+
+        .glow-text {
+            text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+        }
+
+        textarea {
+            background: rgba(0, 0, 0, 0.6) !important;
+            border: 1px solid rgba(188, 19, 254, 0.3) !important;
+            color: var(--neon-blue) !important;
+            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5);
+            resize: none;
+        }
+
+        textarea:focus {
+            border-color: var(--neon-blue) !important;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.2) !important;
+            outline: none;
+        }
+
+        .btn-cyber {
+            position: relative;
+            background: transparent;
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: 0.4s;
+            cursor: pointer;
+        }
+
+        .btn-cyber:hover:not(:disabled) {
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 30px var(--neon-blue);
+        }
+
+        .btn-cyber:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: gray;
+            color: gray;
+        }
+
+        .btn-cyber-purple {
+            border-color: var(--neon-purple);
+            color: var(--neon-purple);
+        }
+
+        .btn-cyber-purple:hover:not(:disabled) {
+            background: var(--neon-purple);
+            color: #fff;
+            box-shadow: 0 0 30px var(--neon-purple);
+        }
+
+        .step-item { transition: 0.3s; border-left: 2px solid transparent; }
+        .step-item:hover { background: rgba(255,255,255,0.05); padding-left: 1.5rem; }
+    </style>
+</head>
+<body class="p-4 md:p-12">
+    <div class="mesh-bg"></div>
+
+    <div class="max-w-5xl mx-auto">
+        <header class="neon-card rounded-3xl p-8 mb-10 flex flex-col md:flex-row justify-between items-center">
+            <div>
+                <h1 class="text-5xl font-bold glow-text tracking-tighter">
+                    MAHABUB-<span class="text-white">BOT</span>
+                </h1>
+                <p class="text-slate-400 font-light mt-1 uppercase tracking-widest text-xs">// Secure Appstate Encryptor</p>
+            </div>
+            <a href="/" class="btn-cyber px-8 py-3 rounded-md font-bold text-sm mt-4 md:mt-0">
+                Dashboard
+            </a>
+        </header>
+
+        <div class="grid lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2">
+                <main class="neon-card rounded-3xl p-8">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+                        <span id="status-light" class="w-3 h-3 bg-cyan-400 rounded-full"></span>
+                        JSON Configuration
+                    </h2>
+                    
+                    <textarea 
+                        id="appstate" 
+                        class="w-full rounded-xl p-6 font-mono text-sm mb-6 transition-all duration-300" 
+                        rows="12"
+                        placeholder='[{"key": "value"}]'
+                    ></textarea>
+
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <button id="saveBtn" onclick="saveSession()" class="btn-cyber flex-1 py-4 rounded-xl font-black">
+                            Save to Mainframe
+                        </button>
+                        <button onclick="formatJSON()" class="btn-cyber btn-cyber-purple px-8 py-4 rounded-xl font-black">
+                            Format
+                        </button>
+                    </div>
+                </main>
+            </div>
+
+            <aside class="space-y-6">
+                <div class="neon-card rounded-3xl p-6">
+                    <h3 class="text-xl font-bold mb-6 text-white/90 uppercase tracking-tighter">Guide</h3>
+                    <div class="space-y-4">
+                        <div class="step-item p-4">
+                            <span class="text-xs text-cyan-400 font-bold block">01. EXTRACT</span>
+                            <p class="text-sm text-slate-300">Copy JSON from your Cookie Extension.</p>
+                        </div>
+                        <div class="step-item p-4">
+                            <span class="text-xs text-purple-400 font-bold block">02. PASTE & FORMAT</span>
+                            <p class="text-sm text-slate-300">Paste it here and click 'Format' to verify.</p>
+                        </div>
+                        <div class="step-item p-4">
+                            <span class="text-xs text-green-400 font-bold block">03. DEPLOY</span>
+                            <p class="text-sm text-slate-300">Save and restart your bot from Dashboard.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="neon-card rounded-3xl p-6 border-t-4 border-cyan-500">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-slate-400 uppercase">Integrity Check</span>
+                        <span id="integrity-text" class="text-xs font-bold text-cyan-400">WAITING</span>
+                    </div>
+                    <div class="h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                        <div id="progress-bar" class="h-full bg-cyan-500 w-0 transition-all duration-500"></div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <script>
+        const appstateInput = document.getElementById('appstate');
+        const saveBtn = document.getElementById('saveBtn');
+        const statusLight = document.getElementById('status-light');
+        const integrityText = document.getElementById('integrity-text');
+        const progressBar = document.getElementById('progress-bar');
+
+        // Verify JSON while typing
+        appstateInput.addEventListener('input', () => {
+            try {
+                if(appstateInput.value.trim() === "") throw "empty";
+                JSON.parse(appstateInput.value);
+                statusLight.className = "w-3 h-3 bg-green-500 shadow-[0_0_10px_#39ff14]";
+                integrityText.innerText = "VALIDATED";
+                progressBar.style.width = "100%";
+            } catch(e) {
+                statusLight.className = "w-3 h-3 bg-red-500 shadow-[0_0_10px_#ff0000]";
+                integrityText.innerText = "INVALID";
+                progressBar.style.width = "30%";
+            }
+        });
+
+        function formatJSON() {
+            try {
+                const rawValue = appstateInput.value;
+                const obj = JSON.parse(rawValue);
+                appstateInput.value = JSON.stringify(obj, null, 4);
+                alert("✨ Matrix Refactor Complete: JSON Formatted!");
+            } catch(e) {
+                alert("❌ Syntax Error: Check your JSON structure!");
+            }
+        }
+
+        async function saveSession() {
+            const data = appstateInput.value.trim();
+
+            if (!data) {
+                alert("Empty Data! Paste your appstate first.");
+                return;
+            }
+
+            try {
+                // Pre-validation
+                JSON.parse(data);
+
+                // UI Loading State
+                saveBtn.disabled = true;
+                const originalText = saveBtn.innerText;
+                saveBtn.innerText = "ENCRYPTING & SAVING...";
+
+                // API CALL
+                const response = await fetch('/api/appstate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ appstate: data })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert("✅ SUCCESS: Appstate updated in the cloud!");
+                    // Optional: redirect to dashboard
+                    // window.location.href = "/";
+                } else {
+                    alert("❌ SERVER ERROR: " + (result.message || "Failed to save"));
+                }
+
+                saveBtn.disabled = false;
+                saveBtn.innerText = originalText;
+
+            } catch (e) {
+                alert("❌ VALIDATION ERROR: Please format/fix JSON before saving.");
+                saveBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+    </html>
