@@ -1,3 +1,5 @@
+
+
 /**
  * @author NTKhang
  * ! The source code is written by NTKhang, please don't change the author's name everywhere. Thank you for using
@@ -24,9 +26,16 @@ const axios = require("axios");
 const fs = require("fs-extra");
 const google = require("googleapis").google;
 const nodemailer = require("nodemailer");
+const express = require("express");
+const app = express();
+// Replit deployment er jonno port fix
+const port = process.env.PORT || 7177;
 const { execSync } = require('child_process');
 const log = require('./logger/log.js');
 const path = require("path");
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 
 process.env.BLUEBIRD_W_FORGOTTEN_RETURN = 0; // Disable warning: "Warning: a promise was created in a handler but was not returned from it"
 
@@ -300,3 +309,42 @@ function compareVersion(version1, version2) {
 	}
 	return 0; // version1 = version2
 }
+
+app.get('/', (req, res) => {
+	res.sendFile(path.join(__dirname, 'public/index.html'));
+});
+
+app.get('/appstate', (req, res) => {
+	res.sendFile(path.join(__dirname, 'public/appstate.html'));
+});
+
+app.get("/api/stats", (req, res) => {
+	const os = require('os');
+	const uptime = process.uptime();
+	res.json({
+		cpu: (os.loadavg()[0] * 100 / (os.cpus().length || 1)).toFixed(2),
+		memoryUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+		uptime: `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m`,
+		nodeVersion: process.version
+	});
+});
+
+app.post("/api/appstate", (req, res) => {
+	const { appstate } = req.body;
+	if (!appstate) return res.status(400).json({ error: "Appstate missing" });
+
+	fs.writeFile(dirAccount, appstate, 'utf8', (err) => {
+		if (err) return res.status(500).json({ error: "Write failed" });
+		res.json({ success: true });
+		setTimeout(() => process.exit(2), 1000);
+	});
+});
+
+// Port listening for Replit Health Check
+app.listen(port, "0.0.0.0", () => {
+	console.log(`[ SERVER ] Active on port ${port}. Health check passed.`);
+});
+
+
+
+
