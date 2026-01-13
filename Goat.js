@@ -1,6 +1,6 @@
 /**
  * @author NTKhang & Gemini Integration
- * Full Fixed Code: Handles both account.txt and account.dev.txt
+ * Final Fixed Code for Render: Auto-fallback for Config & Account files
  */
 
 process.on('unhandledRejection', error => console.log(error));
@@ -23,43 +23,40 @@ app.use(express.urlencoded({ extended: true }));
 
 process.env.BLUEBIRD_W_FORGOTTEN_RETURN = 0;
 
-// ———————————————— DYNAMIC ACCOUNT FILE RESOLVER ———————————————— //
-const { NODE_ENV } = process.env;
+// ———————————————— DYNAMIC FILE RESOLVER ———————————————— //
 
-// Path gula thik kora
-const dirConfig = path.normalize(`${__dirname}/config${NODE_ENV === 'development' ? '.dev.json' : '.json'}`);
-const dirConfigCommands = path.normalize(`${__dirname}/configCommands${NODE_ENV === 'development' ? '.dev.json' : '.json'}`);
+// 1. Config File Resolver
+let dirConfig = path.join(__dirname, 'config.json');
+if (!fs.existsSync(dirConfig) && fs.existsSync(path.join(__dirname, 'config.dev.json'))) {
+    dirConfig = path.join(__dirname, 'config.dev.json');
+}
 
-/**
- * Ei logic-ti check korbe: 
- * 1. Jodi account.dev.txt thake, seta nibe.
- * 2. Na thakle account.txt nibe.
- */
+// 2. ConfigCommands File Resolver
+let dirConfigCommands = path.join(__dirname, 'configCommands.json');
+if (!fs.existsSync(dirConfigCommands) && fs.existsSync(path.join(__dirname, 'configCommands.dev.json'))) {
+    dirConfigCommands = path.join(__dirname, 'configCommands.dev.json');
+}
+
+// 3. Account File Resolver
 let dirAccount = path.join(__dirname, 'account.txt');
 if (fs.existsSync(path.join(__dirname, 'account.dev.txt'))) {
     dirAccount = path.join(__dirname, 'account.dev.txt');
 }
 
-// ———————————————— VERSION BYPASS ———————————————— //
-const pkgPath = path.join(__dirname, 'package.json');
-if (fs.existsSync(pkgPath)) {
-    try {
-        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-        pkg.version = "2.1.0"; 
-        fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
-    } catch (e) { }
-}
+// ———————————————— SAFE CONFIG LOADING ———————————————— //
+let config = {};
+let configCommands = {};
 
-function validJSON(pathDir) {
-    try {
-        if (!fs.existsSync(pathDir)) return false;
-        execSync(`npx jsonlint "${pathDir}"`, { stdio: 'pipe' });
-        return true;
-    } catch (err) { return false; }
+try {
+    if (fs.existsSync(dirConfig)) {
+        config = JSON.parse(fs.readFileSync(dirConfig, 'utf8'));
+    }
+    if (fs.existsSync(dirConfigCommands)) {
+        configCommands = JSON.parse(fs.readFileSync(dirConfigCommands, 'utf8'));
+    }
+} catch (e) {
+    console.error("[ ERROR ] Config parsing failed. Check your JSON format.");
 }
-
-const config = fs.existsSync(dirConfig) ? require(dirConfig) : {};
-const configCommands = fs.existsSync(dirConfigCommands) ? require(dirConfigCommands) : {};
 
 // ———————————————— GLOBAL STATE ———————————————— //
 global.GoatBot = {
@@ -83,44 +80,36 @@ global.client = { dirConfig, dirConfigCommands, dirAccount, database: {}, cache:
 global.utils = require("./utils.js");
 
 // ———————————————— DASHBOARD & STATS API ———————————————— //
-
-app.get('/', (req, res) => res.send("Bot Status: Active and Running"));
+app.get('/', (req, res) => res.send("GoatBot is Active on Render!"));
 
 app.get("/api/stats", (req, res) => {
     const os = require('os');
-    const uptime = process.uptime();
     res.json({
-        activeAccountFile: path.basename(dirAccount),
-        cpuUsage: (os.loadavg()[0] * 100 / (os.cpus().length || 1)).toFixed(2) + "%",
-        ramUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + " MB",
-        uptime: `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m`,
-        totalThreads: global.db.allThreadData.length,
-        totalUsers: global.db.allUserData.length
+        usingConfig: path.basename(dirConfig),
+        usingAccount: path.basename(dirAccount),
+        memory: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + " MB",
+        uptime: Math.floor(process.uptime() / 60) + " mins",
+        threads: global.db.allThreadData.length
     });
 });
 
 app.post("/api/appstate", (req, res) => {
     const { appstate } = req.body;
-    if (!appstate) return res.status(400).json({ error: "No AppState provided" });
-
+    if (!appstate) return res.status(400).send("No AppState");
     const data = typeof appstate === 'object' ? JSON.stringify(appstate, null, 2) : appstate;
-    
-    // Aktu agei resolve kora dirAccount path e save hobe
-    fs.writeFile(dirAccount, data, 'utf8', (err) => {
-        if (err) return res.status(500).json({ error: "Failed to save file" });
-        res.json({ success: true, updatedFile: path.basename(dirAccount) });
-        setTimeout(() => process.exit(2), 2000);
-    });
+    fs.writeFileSync(dirAccount, data, 'utf8');
+    res.json({ success: true, file: path.basename(dirAccount) });
+    setTimeout(() => process.exit(2), 2000);
 });
 
 // ———————————————— INITIALIZATION ———————————————— //
-
 (async () => {
-    console.log(global.utils.colors.cyan(`[ SYSTEM ] Using AppState file: ${path.basename(dirAccount)}`));
+    console.log(`[ SYSTEM ] Config: ${path.basename(dirConfig)}`);
+    console.log(`[ SYSTEM ] Account: ${path.basename(dirAccount)}`);
 
-    // Mail Setup
+    // Gmail Crash Protection
     try {
-        if (config.credentials?.gmailAccount?.email) {
+        if (config?.credentials?.gmailAccount?.email) {
             const { email, clientId, clientSecret, refreshToken } = config.credentials.gmailAccount;
             const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
             oauth2Client.setCredentials({ refresh_token: refreshToken });
@@ -134,13 +123,26 @@ app.post("/api/appstate", (req, res) => {
                 return await transporter.sendMail({ from: email, to, subject, text, html });
             };
         }
-    } catch (e) { log.warn("MAIL", "Mail failed to init."); }
+    } catch (e) {
+        console.warn("[ MAIL ] Gmail system skipped (Config missing or invalid).");
+    }
 
-    // Start Express Server
+    // Server Listen
     app.listen(port, "0.0.0.0", () => {
-        log.success("SERVER", `Dashboard & Stats active on port ${port}`);
+        console.log(`[ SERVER ] Dashboard active on port ${port}`);
     });
 
-    // Start Bot Logic
-    require(`./bot/login/login${NODE_ENV === 'development' ? '.dev.js' : '.js'}`);
+    // Login logic
+    const { NODE_ENV } = process.env;
+    const loginFile = `./bot/login/login${NODE_ENV === 'development' ? '.dev.js' : '.js'}`;
+    
+    try {
+        if (fs.existsSync(path.join(__dirname, loginFile))) {
+            require(loginFile);
+        } else {
+            require('./bot/login/login.js');
+        }
+    } catch (err) {
+        console.error("[ LOGIN ] Could not start login process:", err.message);
+    }
 })();
