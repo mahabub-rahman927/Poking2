@@ -7,11 +7,11 @@ const baseApiUrl = async () => "https://mahabubxnirob-simisimi.onrender.com";
 module.exports.config = {
   name: "janu",
   aliases: ["jan"],
-  version: "1.0.9",
+  version: "1.1.0",
   author: "MR᭄﹅ MAHABUB﹅ メꪜ",
   countDown: 0,
   role: 0,
-  description: "Strict Janu Simisimi Chat",
+  description: "Janu Simisimi Chat",
   category: "chat",
   guide: { en: "Type 'Janu' or use {pn} [text]" }
 };
@@ -66,6 +66,16 @@ module.exports.onChat = async ({ api, event }) => {
 
     if (body === "janu" || body === "jan") {
       return api.sendMessage("🫶 Janu ki bolbo?", event.threadID, event.messageID);
+    }
+
+    if (body.startsWith("janu ") || body.startsWith("jan ")) {
+
+      const text = body.replace(/^(janu|jan)\s+/i, "").trim();
+      const reply = await askAPI(text);
+      api.sendMessage(reply + " ​​", event.threadID, event.messageID);
+      
+      if (reply === "আমি এটা জানি না 🥲") saveUnknownQuestion(text);
+      return; 
     }
 
     if (event.messageReply && event.messageReply.senderID === api.getCurrentUserID()) {
