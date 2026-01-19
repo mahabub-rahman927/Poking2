@@ -5,27 +5,34 @@ const https = require("https");
 
 module.exports = {
   config: {
-    name: 'auto',
-    version: '5.4',
-    author: 'MR᭄﹅ MAHABUB﹅ メꪜ',
+    name: "auto",
+    version: "5.9",
+    author: "MR᭄﹅ MAHABUB﹅ メꪜ",
     countDown: 5,
     role: 0,
-    shortDescription: 'Auto video downloader',
-    category: 'media',
+    shortDescription: "Auto video downloader",
+    category: "media"
   },
 
   onStart: async function ({ api, event }) {
-    return api.sendMessage("📥 Send the link to download the video 🎥", event.threadID);
+    return api.sendMessage(
+      "📥 Send the link to download the video 🎥",
+      event.threadID
+    );
   },
 
   onChat: async function ({ api, event }) {
+    if (!event.body) return;
+
     const threadID = event.threadID;
     const message = event.body.trim();
-
     const linkMatch = message.match(/(https?:\/\/[^\s]+)/);
     if (!linkMatch) return;
 
     const videoLink = linkMatch[0];
+    const isYouTube = /youtube\.com|youtu\.be/.test(videoLink);
+
+    // ♻ Requesting to API
     api.setMessageReaction("♻", event.messageID, () => {}, true);
 
     const isFacebook = videoLink.includes("facebook.com");
@@ -39,62 +46,130 @@ module.exports = {
 
     const httpsAgent = isFacebook ? new https.Agent({ family: 4 }) : undefined;
     const apiBaseURL = global.GoatBot.config.api;
-    const filePath = "video.mp4";
+    const filePath = `video_${Date.now()}.mp4`;
 
-    // Helper: delay between retries
-    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-    // Retry system
+    // ================= API RETRY =================
     const fetchWithRetry = async (url, retries = 3) => {
       for (let i = 1; i <= retries; i++) {
         try {
-          return await axios.get(url, { headers, httpsAgent });
-        } catch (error) {
-          if (i === retries) throw error;
-          await wait(2000); // wait 2s before retry
+          return await axios.get(url, {
+            headers,
+            httpsAgent,
+            timeout: 30000
+          });
+        } catch {
+          if (i === retries) throw new Error("API_FAILED");
+          await wait(2000);
+        }
+      }
+    };
+
+    // ================= DOWNLOAD RETRY =================
+    const downloadWithRetry = (url, retries = 3) => {
+      return new Promise((resolve, reject) => {
+        const attempt = (n) => {
+          request({ url, headers, timeout: 30000 })
+            .pipe(fs.createWriteStream(filePath))
+            .on("close", resolve)
+            .on("error", async () => {
+              if (n < retries) {
+                await wait(2000);
+                attempt(n + 1);
+              } else reject();
+            });
+        };
+        attempt(1);
+      });
+    };
+
+    // ================= SEND + REACT ON ATTACHMENT =================
+    const sendAttachmentWithRetry = async (text, retries = 3) => {
+      let delivered = false;
+
+      // Timeout check (60s)
+      setTimeout(() => {
+        if (!delivered) {
+          api.setMessageReaction("❌", event.messageID, () => {}, true);
+        }
+      }, 30000);
+
+      for (let i = 1; i <= retries; i++) {
+        try {
+          await new Promise((resolve, reject) => {
+            api.sendMessage(
+              {
+                body: text,
+                attachment: fs.createReadStream(filePath)
+              },
+              threadID,
+              (err, info) => {
+                if (err) return reject(err);
+
+                // ✅ Attachment delivered reaction on attachment message
+                api.setMessageReaction("✅", info.messageID, () => {}, true);
+                delivered = true;
+                resolve();
+              }
+            );
+          });
+          return true;
+        } catch {
+          if (i === retries) {
+            api.setMessageReaction("❌", event.messageID, () => {}, true);
+            delivered = true;
+            return false;
+          }
+          await wait(2000);
         }
       }
     };
 
     try {
-      const response = await fetchWithRetry(
+      // ===== API CALL =====
+      const res = await fetchWithRetry(
         `${apiBaseURL}/mahabub/dl?url=${encodeURIComponent(videoLink)}`
       );
 
-      const { platform, title, hd, sd } = response.data;
-      const downloadURL = hd || sd;
-      if (!downloadURL) return api.setMessageReaction("✖", event.messageID, () => {}, true);
+      const { platform, title, hd, sd } = res.data;
+      if (!hd && !sd) throw new Error("NO_URL");
 
-      const downloadWithRetry = (url, retries = 3) => {
-        return new Promise((resolve, reject) => {
-          const attempt = (count) => {
-            const stream = request({ url, headers })
-              .pipe(fs.createWriteStream(filePath))
-              .on("close", () => resolve())
-              .on("error", async (err) => {
-                if (count < retries) {
-                  await wait(2000);
-                  attempt(count + 1);
-                } else {
-                  reject(err);
-                }
-              });
-          };
-          attempt(1);
-        });
-      };
+      // ===== Quality order =====
+      const qualityOrder = isYouTube ? [sd, hd] : [hd, sd];
 
-      await downloadWithRetry(downloadURL);
+      let downloaded = false;
+      for (const url of qualityOrder) {
+        if (!url) continue;
 
+        try {
+          await downloadWithRetry(url);
+          downloaded = true;
+          break;
+        } catch {
+          if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        }
+      }
+
+      if (!downloaded) throw new Error("DOWNLOAD_FAILED");
+
+      // ✔ API passed (after download success)
       api.setMessageReaction("✔", event.messageID, () => {}, true);
-      await api.sendMessage({
-        body: `✅ 𝗗𝗼𝘄𝗻𝗹𝗼𝗮𝗱𝗲𝗱!\n\n📌 Platform: ${platform || "Unknown"}\n🎬 Title: ${title || "No Title"}\n📥 Quality: ${hd ? "HD" : "SD"}`,
-        attachment: fs.createReadStream(filePath)
-      }, threadID, () => fs.unlinkSync(filePath));
+
+      const text =
+        `📥 𝗗𝗼𝘄𝗻𝗹𝗼𝗮𝗱𝗲𝗱!\n\n` +
+        `📌 Platform: ${platform || "Unknown"}\n` +
+        `🎬 Title: ${title || "No Title"}`;
+
+      // ===== SEND =====
+      const sent = await sendAttachmentWithRetry(text, 3);
+      if (!sent) api.setMessageReaction("❌", event.messageID, () => {}, true);
+
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
     } catch {
       api.setMessageReaction("❌", event.messageID, () => {}, true);
-      // Silent fail — no error message shown
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     }
   }
 };
