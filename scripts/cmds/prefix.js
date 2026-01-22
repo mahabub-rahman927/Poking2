@@ -5,8 +5,9 @@ const utils = global.utils;
 
 module.exports = {
     config: {
-        name: "prefix",
+        name: "Prefix",
         version: "1.7",
+        prefix: false,
         author: "MR᭄﹅ MAHABUB﹅ メꪜ",
         countDown: 5,
         role: 0,
@@ -35,8 +36,8 @@ module.exports = {
     // ================= START COMMAND =================
     onStart: async function ({ message, role, args, commandName, event, threadsData, getLang }) {
 
-        // 🔇 NO MESSAGE WHEN NO ARG
-        if (!args[0]) return;
+        if (!args[0])
+            return message.reply("Please provide a new prefix or use `reset`");
 
         if (args[0] === "reset") {
             await threadsData.set(event.threadID, null, "data.prefix");
@@ -44,7 +45,8 @@ module.exports = {
         }
 
         const newPrefix = args[0];
-        if (newPrefix.length < 1 || newPrefix.length > 5) return;
+        if (newPrefix.length < 1 || newPrefix.length > 5)
+            return message.reply("Prefix must be 1–5 characters");
 
         const formSet = {
             commandName,
@@ -60,11 +62,8 @@ module.exports = {
         }
 
         return message.reply(
-            args[1] === "-g"
-                ? getLang("confirmGlobal")
-                : getLang("confirmThisThread"),
+            args[1] === "-g" ? getLang("confirmGlobal") : getLang("confirmThisThread"),
             (err, info) => {
-                if (err) return;
                 formSet.messageID = info.messageID;
                 global.GoatBot.onReaction.set(info.messageID, formSet);
 
@@ -78,8 +77,7 @@ module.exports = {
     // ================= PREFIX INFO + VIDEO =================
     onChat: async function ({ event, message, getLang }) {
 
-        if (!event.body) return;
-        if (event.body.toLowerCase() !== "prefix") return;
+        if (!event.body || event.body.toLowerCase() !== "prefix") return;
 
         try {
             // API must return DIRECT MP4 URL
@@ -94,6 +92,7 @@ module.exports = {
 
             const filePath = path.join(cacheDir, "prefix.mp4");
 
+            // download video
             const video = await axios({
                 method: "GET",
                 url: videoUrl,
@@ -112,7 +111,8 @@ module.exports = {
                     ),
                     attachment: fs.createReadStream(filePath)
                 });
-                fs.unlinkSync(filePath);
+
+                fs.unlinkSync(filePath); // delete after send
             });
 
             writer.on("error", () => {
@@ -121,7 +121,7 @@ module.exports = {
 
         } catch (err) {
             console.error(err);
-            message.reply("❌ Error while sending prefix info");
+            message.reply("❌ Error while sending prefix video");
         }
     },
 
