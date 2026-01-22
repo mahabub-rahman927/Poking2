@@ -1,140 +1,217 @@
-const fs = require("fs");
 const axios = require("axios");
+const FormData = require("form-data");
+const url = require("url");
 const path = require("path");
+
+function bold(text) {
+  let result = "";
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const code = ch.charCodeAt(0);
+
+    if (code >= 65 && code <= 90) result += String.fromCodePoint(0x1D400 + (code - 65));
+    else if (code >= 97 && code <= 122) result += String.fromCodePoint(0x1D41A + (code - 97));
+    else if (code >= 48 && code <= 57) result += String.fromCodePoint(0x1D7CE + (code - 48));
+    else result += ch;
+  }
+  return result;
+}
+
+function toBoldExceptUrl(text) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const placeholders = [];
+  const safeText = text.replace(urlRegex, (match) => {
+    placeholders.push(match);
+    return `<<URL${placeholders.length - 1}>>`;
+  });
+
+  const parts = safeText.split(/(<<URL\d+>>)/g);
+  const finalText = parts.map(part => {
+    if (part.startsWith("<<URL")) return part;
+    return bold(part);
+  }).join("");
+
+  return finalText.replace(/<<URL(\d+)>>/g, (_, index) => placeholders[index]);
+}
+
+async function uploadToCatbox(mediaUrl, attachmentType) {
+  const mediaBuffer = (await axios.get(mediaUrl, { responseType: "arraybuffer" })).data;
+
+  let ext;
+  if (attachmentType && attachmentType.includes("video")) ext = ".mp4";
+  else ext = path.extname(url.parse(mediaUrl).pathname) || ".mp4";
+
+  const form = new FormData();
+  form.append("reqtype", "fileupload");
+  form.append("userhash", "");
+  form.append("fileToUpload", mediaBuffer, { filename: "upload" + ext });
+
+  const upload = await axios.post("https://catbox.moe/user/api.php", form, {
+    headers: {
+      ...form.getHeaders(),
+      "accept": "application/json",
+      "origin": "https://catbox.moe",
+      "referer": "https://catbox.moe/",
+      "user-agent": "Mozilla/5.0 (Linux; Android 10; Mobile) Chrome/137 Safari/537.36"
+    },
+    maxBodyLength: Infinity,
+    timeout: 180000
+  });
+
+  let catboxUrl = upload.data.trim();
+
+  if (!catboxUrl.startsWith("https://")) {
+    throw new Error("Catbox upload failed: " + catboxUrl);
+  }
+
+  catboxUrl = catboxUrl.replace(/\.video$/, ".mp4");
+
+  return catboxUrl;
+}
 
 module.exports = {
   config: {
     name: "album",
-    version: "1.7",
+    aliases: ["al"],
+    version: "2.5",
+    author: "MR᭄﹅ MAHABUB﹅ メꪜ",
+    countDown: 5,
     role: 0,
-    author: "MAHABUB", //⚠️ Do not change the author name, otherwise the file will not work!
-    category: "media",
-    guide: {
-      en: "{p}{n} [cartoon/sad/islamic/funny/anime/...]",
-    },
+    shortDescription: "Smart Album System",
+    longDescription: "Add videos by selecting categories from a list",
+    category: "utility",
+    guide: "{pn} | reply video with {pn} add | {pn} add <url>"
   },
 
-  onStart: async function ({ api, event, args }) {
-    const obfuscatedAuthor = String.fromCharCode(77, 65, 72, 65, 66, 85, 66);
-    if (this.config.author !== obfuscatedAuthor) {
-      return api.sendMessage(
-        "You are not authorized to change the author name.\n\nPlease fix the author name to use this command.",
-        event.threadID,
-        event.messageID
-      );
-    }
+  onStart: async function ({ message, event, api, args }) {
 
-    if (!args[0]) {
-      api.setMessageReaction("😽", event.messageID, (err) => {}, true);
+    // Fetch BASE_API URL properly
+    const resApi = await axios.get("https://raw.githubusercontent.com/MR-MAHABUB-004/MAHABUB-BOT-STORAGE/refs/heads/main/APIURL.json");
+    const BASE_API = resApi.data.album;
 
-      const albumOptions = [
-        "𝐅𝐮𝐧𝐧𝐲 𝐕𝐢𝐝𝐞𝐨 📔",
-        "𝐈𝐬𝐥𝐚𝐦𝐢𝐜 𝐕𝐢𝐝𝐞𝐨 📔",
-        "𝐒𝐚𝐝 𝐕𝐢𝐝𝐞𝐨 📔",
-        "𝐀𝐧𝐢𝐦𝐞 𝐕𝐢𝐝𝐞𝐨 📔",
-        "𝐂𝐚𝐫𝐭𝐨𝐨𝐧 𝐕𝐢𝐝𝐞𝐨 📔",
-        "𝐋𝐨𝐅𝐢 𝐕𝐢𝐝𝐞𝐨 📔",
-        "𝐂𝐨𝐮𝐩𝐥𝐞 𝐕𝐢𝐝𝐞𝐨 📔",
-        "𝐅𝐥𝐨𝐰𝐞𝐫 𝐕𝐢𝐝𝐞𝐨 📔",
-        "𝐀𝐞𝐬𝐭𝐡𝐞𝐭𝐢𝐜 𝐕𝐢𝐝𝐞𝐨 📔",
-        "𝐒𝐢𝐠𝐦𝐚 𝐑𝐮𝐥𝐞 𝐕𝐢𝐝𝐞𝐨 📔",
-        "𝐋𝐲𝐫𝐢𝐜𝐬 𝐕𝐢𝐝𝐞𝐨 📔",
-        "𝐂𝐚𝐭 𝐕𝐢𝐝𝐞𝐨 📔",
-        "𝐅𝐫𝐞𝐞 𝐅𝐢𝐫𝐞 𝐕𝐢𝐝𝐞𝐨 📔",
-        "𝐅𝐨𝐨𝐭𝐛𝐚𝐥𝐥 𝐕𝐢𝐝𝐞𝐨 📔",
-        "𝐆𝐢𝐫𝐥 𝐕𝐢𝐝𝐞𝐨 📔",
-        "𝐅𝐫𝐢𝐞𝐧𝐝𝐬 𝐕𝐢𝐝𝐞𝐨 📔",
-      ];
+    // --- Add video process ---
+    if (args[0] === "add") {
+      let videoUrl = args[1];
 
-      const message =
-        "𝐇𝐞𝐫𝐞 𝐢𝐬 𝐲𝐨𝐮𝐫 𝐚𝐯𝐚𝐢𝐥𝐚𝐛𝐥𝐞 𝐚𝐥𝐛𝐮𝐦 𝐯𝐢𝐝𝐞𝐨 𝐥𝐢𝐬𝐭 📔\n" +
-        "━━━━━━━━━━━━━━━━━━━━━\n" +
-        albumOptions.map((option, index) => `${index + 1}. ${option}`).join("\n") +
-        "\n━━━━━━━━━━━━━━━━━━━━━";
-
-      await api.sendMessage(
-        message,
-        event.threadID,
-        (error, info) => {
-          global.GoatBot.onReply.set(info.messageID, {
-            commandName: this.config.name,
-            type: "reply",
-            messageID: info.messageID,
-            author: event.senderID,
-            link: albumOptions,
-          });
-        },
-        event.messageID
-      );
-    }
-  },
-
-  onReply: async function ({ api, event, Reply }) {
-    api.unsendMessage(Reply.messageID);
-
-    const categories = [
-      "funny",
-      "islamic",
-      "sad",
-      "anime",
-      "cartoon",
-      "lofi",
-      "couple",
-      "flower",
-      "aesthetic",
-      "sigma",
-      "lyrics",
-      "cat",
-      "freefire",
-      "football",
-      "girl",
-      "friends",
-    ];
-
-    const captions = [
-      "❰ 𝐅𝐮𝐧𝐧𝐲 𝐕𝐢𝐝𝐞𝐨 <😹 ❱",
-      "❰ 𝐈𝐬𝐥𝐚𝐦𝐢𝐜 𝐕𝐢𝐝𝐞𝐨 <🕋 ❱",
-      "❰ 𝐒𝐚𝐝 𝐕𝐢𝐝𝐞𝐨 <😿 ❱",
-      "❰ 𝐀𝐧𝐢𝐦𝐞 𝐕𝐢𝐝𝐞𝐨 <🥱 ❱",
-      "❰ 𝐂𝐚𝐫𝐭𝐨𝐨𝐧 𝐕𝐢𝐝𝐞𝐨 <❤️‍🩹 ❱",
-      "❰ 𝐋𝐨𝐅𝐢 𝐕𝐢𝐝𝐞𝐨 <🌆 ❱",
-      "❰ 𝐂𝐨𝐮𝐩𝐥𝐞 𝐕𝐢𝐝𝐞𝐨 <💑 ❱",
-      "❰ 𝐅𝐥𝐨𝐰𝐞𝐫 𝐕𝐢𝐝𝐞𝐨 <🌸 ❱",
-      "❰ 𝐀𝐞𝐬𝐭𝐡𝐞𝐭𝐢𝐜 𝐕𝐢𝐝𝐞𝐨 <🎨 ❱",
-      "❰ 𝐒𝐢𝐠𝐦𝐚 𝐕𝐢𝐝𝐞𝐨 <🗿 ❱",
-      "❰ 𝐋𝐲𝐫𝐢𝐜𝐬 𝐕𝐢𝐝𝐞𝐨 <🎵 ❱",
-      "❰ 𝐂𝐚𝐭 𝐕𝐢𝐝𝐞𝐨 <🐱 ❱",
-      "❰ 𝐅𝐫𝐞𝐞 𝐅𝐢𝐫𝐞 𝐕𝐢𝐝𝐞𝐨 <🔥 ❱",
-      "❰ 𝐅𝐨𝐨𝐭𝐛𝐚𝐥𝐥 𝐕𝐢𝐝𝐞𝐨 <⚽ ❱",
-      "❰ 𝐆𝐢𝐫𝐥 𝐕𝐢𝐝𝐞𝐨 <💃 ❱",
-      "❰ 𝐅𝐫𝐢𝐞𝐧𝐝𝐬 𝐕𝐢𝐝𝐞𝐨 <👫🏼 ❱",
-    ];
-
-    const replyIndex = parseInt(event.body);
-    if (isNaN(replyIndex) || replyIndex < 1 || replyIndex > categories.length) {
-      return api.sendMessage("⚠️ Please reply with a valid number from the list!", event.threadID);
-    }
-
-    let query = categories[replyIndex - 1];
-    let cp = captions[replyIndex - 1];
-
-    try {
-      const response = await axios.get(`https://mahabub-video-api-we90.onrender.com/mahabub/${query}`);
-      const videoUrl = response.data.data;
-
-      if (!videoUrl) {
-        return api.sendMessage("❌ No video found for this category!", event.threadID);
+      if (event.type === "message_reply") {
+        const attachment = event.messageReply.attachments[0];
+        if (attachment) {
+          videoUrl = attachment.url;
+        }
       }
 
-      const filePath = path.join(__dirname, "temp_video.mp4");
-      await axios({ url: videoUrl, method: "GET", responseType: "stream" }).then(response =>
-        response.data.pipe(fs.createWriteStream(filePath)).on("finish", () =>
-          api.sendMessage({ body: cp, attachment: fs.createReadStream(filePath) }, event.threadID, () => fs.unlinkSync(filePath))
-        )
-      );
+      if (!videoUrl) return message.reply(toBoldExceptUrl("❌ Please reply to a video or provide a URL!"));
 
-    } catch (error) {
-      api.sendMessage("❌ Failed to fetch or download the video.", event.threadID);
+      try {
+        const res = await axios.get(`${BASE_API}/api/upload`);
+        const categories = res.data.availableCategories;
+
+        let msg = "╭─────────────╼\n" +
+                  "│  📂 SELECT CATEGORY\n" +
+                  "╰─────────────╼\n\n";
+
+        categories.forEach((cat, index) => {
+          msg += `  ${index + 1}.  ${cat.category.toUpperCase()}\n`;
+        });
+
+        msg += `\n╼───────────────╼\n` +
+               `  💡 Reply with the number where\n` +
+               `  you want to add this video.`;
+
+        return message.reply(toBoldExceptUrl(msg), (err, info) => {
+          global.GoatBot.onReply.set(info.messageID, {
+            commandName: this.config.name,
+            type: "add_video",
+            videoUrl: videoUrl,
+            categories: categories,
+            author: event.senderID,
+            BASE_API: BASE_API
+          });
+        });
+      } catch (err) {
+        return message.reply(toBoldExceptUrl("❌ Could not fetch categories."));
+      }
+    }
+
+    // --- View album list ---
+    if (!args[0]) {
+      try {
+        const res = await axios.get(`${BASE_API}/api/upload`);
+        const categories = res.data.availableCategories;
+
+        let msg = "╭─────────────╼\n" +
+                  "│  🎬 AVAILABLE ALBUMS\n" +
+                  "╰─────────────╼\n\n";
+
+        categories.forEach((cat, index) => {
+          msg += `  ${index + 1}.  ${cat.category.toUpperCase()} 「${cat.totalVideos}」\n`;
+        });
+
+        msg += `\n╼───────────────╼\n  💡 Reply number to get video.`;
+
+        return message.reply(toBoldExceptUrl(msg), (err, info) => {
+          global.GoatBot.onReply.set(info.messageID, {
+            commandName: this.config.name,
+            type: "view_video",
+            messageID: info.messageID,
+            categories: categories,
+            author: event.senderID,
+            BASE_API: BASE_API
+          });
+        });
+      } catch (err) {
+        return message.reply(toBoldExceptUrl("❌ Error loading list."));
+      }
     }
   },
+
+  onReply: async function ({ message, event, api, Reply }) {
+    const { type, categories, videoUrl, messageID, author, BASE_API } = Reply;
+    if (event.senderID !== author) return;
+
+    const index = parseInt(event.body);
+
+    if (isNaN(index) || index <= 0 || index > categories.length) return;
+
+    const selectedCategory = categories[index - 1].category;
+
+    // --- Add video ---
+    if (type === "add_video") {
+      try {
+        const sentMsg = await message.reply(toBoldExceptUrl(`🔄 Uploading to Catbox...`));
+
+        const catboxUrl = await uploadToCatbox(videoUrl, "video");
+
+        const res = await axios.get(`${BASE_API}/api/upload/${selectedCategory}?url=${encodeURIComponent(catboxUrl)}`);
+
+        return api.editMessage(
+          toBoldExceptUrl(`✅ Successfully added!\n📂 Album: ${selectedCategory}\n📊 Total: ${res.data.totalVideos}\n🔗 Catbox: ${catboxUrl}`),
+          sentMsg.messageID
+        );
+      } catch (err) {
+        return message.reply(toBoldExceptUrl("❌ API Error."));
+      }
+    }
+
+    // --- View video ---
+    if (type === "view_video") {
+      try {
+        await api.editMessage(toBoldExceptUrl("⏳ Preparing..."), messageID);
+        const res = await axios.get(`${BASE_API}/api/${selectedCategory}`);
+
+        if (!res.data.status) return api.editMessage(toBoldExceptUrl("❌ No video found!"), messageID);
+
+        await api.editMessage(toBoldExceptUrl("🔄 Sending..."), messageID);
+
+        await message.reply({
+          body: toBoldExceptUrl(`🎬 Category: ${selectedCategory.toUpperCase()}`),
+          attachment: await global.utils.getStreamFromURL(res.data.video)
+        });
+
+        return api.editMessage(toBoldExceptUrl("✨ Enjoy your video!"), messageID);
+      } catch (err) {
+        return api.editMessage(toBoldExceptUrl("❌ Error!"), messageID);
+      }
+    }
+  }
 };
