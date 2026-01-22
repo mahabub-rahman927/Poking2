@@ -4,6 +4,7 @@ const path = require("path");
 const ytSearch = require("yt-search");
 const https = require("https");
 
+/* ================= AUTO DELETE FILE ================= */
 function deleteAfterTimeout(filePath, timeout = 15000) {
   setTimeout(() => {
     if (fs.existsSync(filePath)) {
@@ -15,17 +16,18 @@ function deleteAfterTimeout(filePath, timeout = 15000) {
   }, timeout);
 }
 
+/* ================= COMMAND ================= */
 module.exports = {
   config: {
     name: "song",
     aliases: ["music"],
-    version: "4.0",
+    version: "4.1.0",
     prefix: false,
-    author: "‎MR᭄﹅ MAHABUB﹅ メꪜ",
+    author: "MR᭄﹅ MAHABUB﹅ メꪜ",
     countDown: 5,
     role: 0,
     shortDescription: "Download MP3 using YouTube search",
-    longDescription: "Search YouTube then fetch MP3 from Mahabub CDN API",
+    longDescription: "Search YouTube then download audio via Mahabub API",
     category: "media",
     guide: "{p}{n} <song name>",
   },
@@ -33,7 +35,7 @@ module.exports = {
   onStart: async function ({ api, event, args }) {
     if (!args.length) {
       return api.sendMessage(
-        "» উফফ কি গান শুনতে চাস তার ২/১ লাইন তো লেখবি নাকি 😾",
+        "» উফফ 😾 কোন গান শুনতে চাস একটু লিখে দে!",
         event.threadID,
         event.messageID
       );
@@ -43,47 +45,59 @@ module.exports = {
     let searchMsg;
 
     try {
-      // 🔍 Searching message
+      /* 🔍 Searching message */
       searchMsg = await api.sendMessage(
         `🔍 Searching for "${songName}"...`,
         event.threadID
       );
 
-      // 🔎 YouTube search
+      /* 🔎 YouTube search */
       const result = await ytSearch(songName);
-      if (!result.videos.length) throw new Error("No YouTube results.");
+      if (!result.videos || result.videos.length === 0) {
+        throw new Error("No YouTube results found");
+      }
 
       const top = result.videos[0];
       const ytUrl = `https://youtu.be/${top.videoId}`;
 
-      // 🌐 Get audio link from API
-      const cdnUrl = `https://mahabub-ytmp3.vercel.app/api/cdn?url=${encodeURIComponent(
+      /* 🌐 Fetch audio from API */
+      const apiUrl = `https://mahabub-apis.fun/mahabub/ytmp3?url=${encodeURIComponent(
         ytUrl
       )}`;
-      const { data } = await axios.get(cdnUrl);
 
-      if (!data.status || !data.cdna)
-        throw new Error("Audio link not found in API.");
+      const { data } = await axios.get(apiUrl);
 
-      const title = data.title || "Unknown Title";
-      const audioLink = data.cdna;
+      /* ✅ FIXED RESPONSE CHECK */
+      if (data.status !== "success" || !data.audio) {
+        throw new Error("Audio link not found from API");
+      }
 
-      // ✏ Edit search message → FOUND + downloading
+      const title = data.title || top.title || "Unknown Title";
+      const audioLink = data.audio;
+
+      /* ✏ Update search message */
       await api.editMessage(
         `✅ FOUND: ${title}\n⬇ Downloading...`,
         searchMsg.messageID
       );
 
-      // 📂 File path
-      const safeFile = title.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
-      const ext = audioLink.includes(".mp3") ? "mp3" : "m4a";
-      const filePath = path.join(__dirname, "cache", `${safeFile}.${ext}`);
+      /* 📂 File path */
+      const safeName = title.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 30);
 
-      if (!fs.existsSync(path.dirname(filePath))) {
-        fs.mkdirSync(path.dirname(filePath), { recursive: true });
+      const ext = audioLink.includes(".mp3")
+        ? "mp3"
+        : audioLink.includes(".m4a")
+        ? "m4a"
+        : "mp3";
+
+      const cacheDir = path.join(__dirname, "cache");
+      const filePath = path.join(cacheDir, `${safeName}.${ext}`);
+
+      if (!fs.existsSync(cacheDir)) {
+        fs.mkdirSync(cacheDir, { recursive: true });
       }
 
-      // ⬇ Download audio
+      /* ⬇ Download audio */
       const file = fs.createWriteStream(filePath);
       await new Promise((resolve, reject) => {
         https
@@ -91,31 +105,38 @@ module.exports = {
             if (res.statusCode === 200) {
               res.pipe(file);
               file.on("finish", () => file.close(resolve));
-            } else reject(new Error(`Download failed [${res.statusCode}]`));
+            } else {
+              reject(
+                new Error(`Download failed (status ${res.statusCode})`)
+              );
+            }
           })
           .on("error", reject);
       });
 
-      // 🎵 Send audio and then auto delete
+      /* 🎵 Send audio */
       await api.sendMessage(
         {
-          body: `🎶 ${title}\n✅ Downloaded successfully!`,
+          body: `🎶 ${title}\n✅ Download complete`,
           attachment: fs.createReadStream(filePath),
         },
         event.threadID,
         (err) => {
-          if (!err) deleteAfterTimeout(filePath, 10000); // Auto delete 10s after send
-          else console.error("❌ Send message error:", err);
+          if (!err) deleteAfterTimeout(filePath, 10000);
         },
         event.messageID
       );
 
-      // Update search message to success
+      /* ✅ Final update */
       await api.editMessage(`✅ Sent: ${title}`, searchMsg.messageID);
     } catch (err) {
-      console.error("❌ Error:", err.message);
+      console.error("❌ Song Error:", err.message);
+
       if (searchMsg?.messageID) {
-        api.editMessage(`❌ Failed: ${err.message}`, searchMsg.messageID);
+        api.editMessage(
+          `❌ Failed: ${err.message}`,
+          searchMsg.messageID
+        );
       } else {
         api.sendMessage(
           `❌ Failed: ${err.message}`,
