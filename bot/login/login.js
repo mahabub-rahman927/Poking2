@@ -454,8 +454,7 @@ async function getAppStateToLogin(loginWithEmail, retryCount = 0) {
     }
     
     let appState = [];
-    if (loginWithEmail)
-        return await getAppStateFromEmail(undefined, facebookAccount);
+    if (loginWithEmail) return await getAppStateFromEmail(undefined, facebookAccount);
     
     if (!existsSync(currentDirAccount)) {
         const error = new Error(`Account file not found: ${path.basename(currentDirAccount)}`);
@@ -466,38 +465,28 @@ async function getAppStateToLogin(loginWithEmail, retryCount = 0) {
     const accountText = readFileSync(currentDirAccount, "utf8");
 
     try {
-        // Check if file is empty
-        if (!accountText.trim()) {
-            const error = new Error(`${path.basename(currentDirAccount)} is empty`);
-            error.name = "ACCOUNT_ERROR";
-            throw error;
-        }
+        if (!accountText.trim()) throw new Error("File is empty");
 
-        // Try to parse as JSON first
+        // JSON ফরম্যাট হ্যান্ডলিং
         try {
             appState = JSON.parse(accountText);
             
-            // Validate JSON structure
-            if (!Array.isArray(appState)) {
-                const error = new Error(`${path.basename(currentDirAccount)} is not a valid cookie array`);
-                error.name = "ACCOUNT_ERROR";
-                throw error;
-            }
-            
-            // Fix domain format if needed
+            if (!Array.isArray(appState)) throw new Error("Not a valid array");
+
+            // ডোমেইন এবং ভ্যালু ফিক্সিং
             appState = appState.map(cookie => {
-                // Fix domain: "facebook.com" -> ".facebook.com"
+                // facebook.com কে .facebook.com এ রূপান্তর
                 if (cookie.domain && !cookie.domain.startsWith('.')) {
                     cookie.domain = `.${cookie.domain}`;
                 }
+                // XS কুকি যদি এনকোড করা থাকে (%3A), তবে তা ডিকোড করা
+                if (cookie.key === 'xs' && cookie.value.includes('%3A')) {
+                    cookie.value = decodeURIComponent(cookie.value);
+                }
                 return cookie;
             });
-            
-            // Filter only important cookies
-            const importantCookies = ['c_user', 'xs', 'fr', 'datr', 'sb'];
-            appState = appState.filter(cookie => importantCookies.includes(cookie.key));
-            
-            // Add i_user if not present
+
+            // i_user অ্যাড করা যদি না থাকে
             const c_user = appState.find(c => c.key === 'c_user');
             if (c_user && !appState.find(c => c.key === 'i_user')) {
                 appState.push({
@@ -511,253 +500,39 @@ async function getAppStateToLogin(loginWithEmail, retryCount = 0) {
                 });
             }
             
-            // Check if we have required cookies
-            const missingCookies = importantCookies.filter(key => !appState.find(c => c.key === key));
-            if (missingCookies.length > 0) {
-                const error = new Error(`Missing required cookies: ${missingCookies.join(', ')}`);
-                error.name = "COOKIE_INVALID";
-                throw error;
-            }
-            
-            // URL decode xs cookie if needed
-            const xsCookie = appState.find(c => c.key === 'xs');
-            if (xsCookie && xsCookie.value.includes('%3A')) {
-                try {
-                    xsCookie.value = decodeURIComponent(xsCookie.value);
-                } catch (e) {
-                    // Keep original if decode fails
-                }
-            }
-            
-            // Check cookie validity
-            const cookieString = appState
-                .filter(c => c.key && c.value)
-                .map(c => `${c.key}=${c.value}`)
-                .join('; ');
-            
-            if (!await checkLiveCookie(cookieString, facebookAccount.userAgent)) {
-                const error = new Error(`Cookie is invalid in ${path.basename(currentDirAccount)}`);
-                error.name = "COOKIE_INVALID";
-                throw error;
-            }
-            
         } catch (jsonError) {
-            // If not JSON, try other formats
-            const splitAccountText = accountText.replace(/\|/g, '\n').split('\n').map(i => i.trim()).filter(i => i);
-            
-            // is token full permission
+            // যদি JSON না হয়, তবে স্ট্রিং বা নেটস্কেপ হিসেবে ট্রাই করবে
             if (accountText.startsWith('EAAAA')) {
-                try {
-                    spin = createOraDots(getText('login', 'loginToken'));
-                    spin._start();
-                    appState = await require('./getFbstate.js')(accountText);
-                }
-                catch (err) {
-                    err.name = "TOKEN_ERROR";
-                    throw err;
-                }
-            }
-            // is cookie string
-            else if (accountText.match(/^(?:\s*\w+\s*=\s*[^;]*;?)+/)) {
-                spin = createOraDots(getText('login', 'loginCookieString'));
-                spin._start();
-                appState = accountText.split(';')
-                    .map(i => {
-                        const [key, value] = i.split('=');
-                        return {
-                            key: (key || "").trim(),
-                            value: (value || "").trim(),
-                            domain: ".facebook.com",
-                            path: "/",
-                            hostOnly: true,
-                            creation: new Date().toISOString(),
-                            lastAccessed: new Date().toISOString()
-                        };
-                    })
-                    .filter(i => i.key && i.value && i.key != "x-referer");
-            }
-            // is netscape cookie
-            else if (isNetScapeCookie(accountText)) {
-                spin = createOraDots(getText('login', 'loginCookieNetscape'));
-                spin._start();
+                appState = await require('./getFbstate.js')(accountText);
+            } else if (isNetScapeCookie(accountText)) {
                 appState = netScapeToCookies(accountText);
-            }
-            // is email:password format
-            else if (
-                (splitAccountText.length == 2 || splitAccountText.length == 3) &&
-                !splitAccountText.slice(0, 2).map(i => i.trim()).some(i => i.includes(' '))
-            ) {
-                global.GoatBot.config.facebookAccount.email = splitAccountText[0];
-                global.GoatBot.config.facebookAccount.password = splitAccountText[1];
-                if (splitAccountText[2]) {
-                    const code2FATemp = splitAccountText[2].replace(/ /g, "");
-                    global.GoatBot.config.facebookAccount['2FASecret'] = code2FATemp;
-                }
-                writeFileSync(global.client.dirConfig, JSON.stringify(global.GoatBot.config, null, 2));
-                return await getAppStateToLogin(true, retryCount + 1);
-            }
-            else {
-                throw new Error(`${path.basename(currentDirAccount)} is in an unknown format`);
-            }
-        }
-    }
-    catch (err) {
-        spin && spin._stop();
-        
-        console.log("Error details:", err.message);
-        console.log("Error name:", err.name);
-        
-        if (err.name === "TOKEN_ERROR") {
-            log.err("LOGIN FACEBOOK", getText('login', 'tokenError', colors.green("EAAAA..."), colors.green(currentDirAccount)));
-            
-            if (facebookAccount.email && facebookAccount.password && !loginWithEmail) {
-                log.info("LOGIN", "Token invalid, trying with email/password...");
-                return await getAppStateToLogin(true, retryCount + 1);
-            } else if (await autoSwitchAccount()) {
-                log.info("LOGIN", "Trying with next account...");
-                return await getAppStateToLogin(false, retryCount + 1);
-            }
-        }
-        else if (err.name === "COOKIE_INVALID") {
-            log.err("LOGIN FACEBOOK", getText('login', 'cookieError'), `File: ${path.basename(currentDirAccount)}`);
-            
-            if (facebookAccount.email && facebookAccount.password && !loginWithEmail) {
-                log.info("LOGIN", "Cookie invalid, trying with email/password...");
-                return await getAppStateToLogin(true, retryCount + 1);
-            } else if (await autoSwitchAccount()) {
-                log.info("LOGIN", "Trying with next account...");
-                return await getAppStateToLogin(false, retryCount + 1);
-            }
-        }
-        else if (err.name === "ACCOUNT_NOT_FOUND" || err.name === "ACCOUNT_ERROR") {
-            log.err("LOGIN FACEBOOK", err.message);
-            
-            if (facebookAccount.email && facebookAccount.password && !loginWithEmail) {
-                log.info("LOGIN", "Account file error, trying with email/password...");
-                return await getAppStateToLogin(true, retryCount + 1);
-            } else if (await autoSwitchAccount()) {
-                log.info("LOGIN", "Trying with next account...");
-                return await getAppStateToLogin(false, retryCount + 1);
-            }
-        }
-        else {
-            log.err("LOGIN FACEBOOK", "Unknown error:", err.message);
-            
-            if (facebookAccount.email && facebookAccount.password && !loginWithEmail) {
-                log.info("LOGIN", "Unknown error, trying with email/password...");
-                return await getAppStateToLogin(true, retryCount + 1);
-            } else if (await autoSwitchAccount()) {
-                log.info("LOGIN", "Trying with next account...");
-                return await getAppStateToLogin(false, retryCount + 1);
-            }
-        }
-
-        // If no email/password, ask user
-        if (!facebookAccount.email || !facebookAccount.password) {
-            log.warn("LOGIN FACEBOOK", getText('login', 'cannotFindAccount'));
-            const rl = readline.createInterface({
-                input: process.stdin,
-                output: process.stdout
-            });
-            const options = [
-                getText('login', 'chooseAccount'),
-                getText('login', 'chooseToken'),
-                getText('login', 'chooseCookieString'),
-                getText('login', 'chooseCookieArray')
-            ];
-            let currentOption = 0;
-            await new Promise((resolve) => {
-                const character = '>';
-                function showOptions() {
-                    rl.output.write(`\r${options.map((option, index) => index === currentOption ? colors.blueBright(`${character} (${index + 1}) ${option}`) : `  (${index + 1}) ${option}`).join('\n')}\u001B`);
-                    rl.write('\u001B[?25l'); // hides cursor
-                }
-                rl.input.on('keypress', (_, key) => {
-                    if (key.name === 'up') {
-                        currentOption = (currentOption - 1 + options.length) % options.length;
-                    }
-                    else if (key.name === 'down') {
-                        currentOption = (currentOption + 1) % options.length;
-                    }
-                    else if (!isNaN(key.name)) {
-                        const number = parseInt(key.name);
-                        if (number >= 0 && number <= options.length)
-                            currentOption = number - 1;
-                        process.stdout.write('\033[1D'); // delete the character
-                    }
-                    else if (key.name === 'enter' || key.name === 'return') {
-                        rl.input.removeAllListeners('keypress');
-                        rl.close();
-                        clearLines(options.length + 1);
-                        showOptions();
-                        resolve();
-                    }
-                    else {
-                        process.stdout.write('\033[1D'); // delete the character
-                    }
-
-                    clearLines(options.length);
-                    showOptions();
-                });
-                showOptions();
-            });
-
-            rl.write('\u001B[?25h\n'); // show cursor 
-            clearLines(options.length + 1);
-            log.info("LOGIN FACEBOOK", getText('login', 'loginWith', options[currentOption]));
-
-            if (currentOption == 0) {
-                const email = await input(`${getText('login', 'inputEmail')} `);
-                const password = await input(`${getText('login', 'inputPassword')} `, true);
-                const twoFactorAuth = await input(`${getText('login', 'input2FA')} `);
-                facebookAccount.email = email || '';
-                facebookAccount.password = password || '';
-                facebookAccount['2FASecret'] = twoFactorAuth || '';
-                writeFileSync(global.client.dirConfig, JSON.stringify(global.GoatBot.config, null, 2));
-                return await getAppStateToLogin(true, retryCount + 1);
-            }
-            else if (currentOption == 1) {
-                const token = await input(getText('login', 'inputToken') + " ");
-                writeFileSync(currentDirAccount, token);
-                return await getAppStateToLogin(false, retryCount + 1);
-            }
-            else if (currentOption == 2) {
-                const cookie = await input(getText('login', 'inputCookieString') + " ");
-                writeFileSync(currentDirAccount, cookie);
-                return await getAppStateToLogin(false, retryCount + 1);
-            }
-            else {
-                const cookie = await input(getText('login', 'inputCookieArray') + " ");
-                writeFileSync(currentDirAccount, JSON.stringify(JSON.parse(cookie), null, 2));
-                return await getAppStateToLogin(false, retryCount + 1);
-            }
-        }
-
-        // Try email/password login
-        log.info("LOGIN FACEBOOK", getText('login', 'loginPassword'));
-        log.info("ACCOUNT INFO", `Email: ${facebookAccount.email}, I_User: ${facebookAccount.i_user || "(empty)"}`);
-        spin = createOraDots(getText('login', 'loginPassword'));
-        spin._start();
-
-        try {
-            appState = await getAppStateFromEmail(spin, facebookAccount);
-            spin._stop();
-        }
-        catch (err) {
-            spin._stop();
-            log.err("LOGIN FACEBOOK", getText('login', 'loginError'), err.message, err);
-            
-            if (await autoSwitchAccount()) {
-                log.info("LOGIN", "Trying with next account...");
-                return await getAppStateToLogin(false, retryCount + 1);
             } else {
-                log.error("LOGIN", "All login methods failed. Exiting...");
-                process.exit(1);
+                // সাধারণ কুকি স্ট্রিং ফরম্যাট
+                appState = accountText.split(';').map(i => {
+                    const [key, value] = i.split('=');
+                    return {
+                        key: (key || "").trim(),
+                        value: (value || "").trim(),
+                        domain: ".facebook.com",
+                        path: "/"
+                    };
+                }).filter(i => i.key && i.value);
             }
         }
+    } catch (err) {
+        // এরর হলে পরবর্তী অ্যাকাউন্টে সুইচ করার লজিক
+        log.err("LOGIN", `Error loading account: ${err.message}`);
+        if (await autoSwitchAccount()) {
+            return await getAppStateToLogin(false, retryCount + 1);
+        }
+        process.exit(1);
     }
     return appState;
 }
+
+
+
+
 
 function stopListening(keyListen) {
 	keyListen = keyListen || Object.keys(callbackListenTime).pop();
