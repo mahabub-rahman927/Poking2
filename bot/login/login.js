@@ -193,7 +193,7 @@ qr.readQrCode = async function (filePath) {
 	return value.result;
 };
 
-const { dirAccount } = global.client;
+// const { dirAccount } = global.client; // এই লাইন রিমুভ করতে হবে
 const { facebookAccount } = global.GoatBot.config;
 
 function responseUptimeSuccess(req, res) {
@@ -228,7 +228,7 @@ global.responseUptimeError = responseUptimeError;
 
 global.statusAccountBot = 'good';
 let changeFbStateByCode = false;
-let latestChangeContentAccount = fs.statSync(dirAccount).mtimeMs;
+let latestChangeContentAccount = null;
 let dashBoardIsRunning = false;
 
 // ———————————————— MULTI-ACCOUNT AUTO SWITCH LOGIC ———————————————— //
@@ -443,16 +443,19 @@ function pushI_user(appState, value) {
 
 let spin;
 async function getAppStateToLogin(loginWithEmail) {
+    // সর্বদা fresh dirAccount ব্যবহার করব
+    const currentDirAccount = global.client.dirAccount;
+    
 	let appState = [];
 	if (loginWithEmail)
 		return await getAppStateFromEmail(undefined, facebookAccount);
-	if (!existsSync(dirAccount)) {
-		const error = new Error("Account file not found");
+	if (!existsSync(currentDirAccount)) {
+		const error = new Error(`Account file not found: ${path.basename(currentDirAccount)}`);
 		error.name = "ACCOUNT_NOT_FOUND";
 		throw error;
 	}
 		
-	const accountText = readFileSync(dirAccount, "utf8");
+	const accountText = readFileSync(currentDirAccount, "utf8");
 
 	try {
 		const splitAccountText = accountText.replace(/\|/g, '\n').split('\n').map(i => i.trim()).filter(i => i);
@@ -514,7 +517,7 @@ async function getAppStateToLogin(loginWithEmail) {
 					appState = JSON.parse(accountText);
 				}
 				catch (err) {
-					const error = new Error(`${path.basename(dirAccount)} is invalid`);
+					const error = new Error(`${path.basename(currentDirAccount)} is invalid`);
 					error.name = "ACCOUNT_ERROR";
 					throw error;
 				}
@@ -525,7 +528,7 @@ async function getAppStateToLogin(loginWithEmail) {
 						return i;
 					});
 				else if (!appState.some(i => i.key)) {
-					const error = new Error(`${path.basename(dirAccount)} is invalid`);
+					const error = new Error(`${path.basename(currentDirAccount)} is invalid`);
 					error.name = "ACCOUNT_ERROR";
 					throw error;
 				}
@@ -541,7 +544,7 @@ async function getAppStateToLogin(loginWithEmail) {
 					.filter(i => i.key && i.value && i.key != "x-referer");
 			}
 			if (!await checkLiveCookie(appState.map(i => i.key + "=" + i.value).join("; "), facebookAccount.userAgent)) {
-				const error = new Error("Cookie is invalid");
+				const error = new Error(`Cookie is invalid in ${path.basename(currentDirAccount)}`);
 				error.name = "COOKIE_INVALID";
 				throw error;
 			}
@@ -553,15 +556,16 @@ async function getAppStateToLogin(loginWithEmail) {
 			email,
 			password
 		} = facebookAccount;
+		
 		if (err.name === "TOKEN_ERROR") {
-			log.err("LOGIN FACEBOOK", getText('login', 'tokenError', colors.green("EAAAA..."), colors.green(dirAccount)));
+			log.err("LOGIN FACEBOOK", getText('login', 'tokenError', colors.green("EAAAA..."), colors.green(currentDirAccount)));
 			if (await autoSwitchAccount()) {
 				log.info("LOGIN", "Trying with next account...");
 				return await getAppStateToLogin(false);
 			}
 		}
 		else if (err.name === "COOKIE_INVALID") {
-			log.err("LOGIN FACEBOOK", getText('login', 'cookieError'));
+			log.err("LOGIN FACEBOOK", getText('login', 'cookieError'), `File: ${path.basename(currentDirAccount)}`);
 			if (await autoSwitchAccount()) {
 				log.info("LOGIN", "Trying with next account...");
 				return await getAppStateToLogin(false);
@@ -573,6 +577,9 @@ async function getAppStateToLogin(loginWithEmail) {
 				log.info("LOGIN", "Trying with next account...");
 				return await getAppStateToLogin(false);
 			}
+		}
+		else {
+			log.err("LOGIN FACEBOOK", "Unknown error:", err.message);
 		}
 
 		if (!email || !password) {
@@ -639,15 +646,15 @@ async function getAppStateToLogin(loginWithEmail) {
 			}
 			else if (currentOption == 1) {
 				const token = await input(getText('login', 'inputToken') + " ");
-				writeFileSync(global.client.dirAccount, token);
+				writeFileSync(currentDirAccount, token);
 			}
 			else if (currentOption == 2) {
 				const cookie = await input(getText('login', 'inputCookieString') + " ");
-				writeFileSync(global.client.dirAccount, cookie);
+				writeFileSync(currentDirAccount, cookie);
 			}
 			else {
 				const cookie = await input(getText('login', 'inputCookieArray') + " ");
-				writeFileSync(global.client.dirAccount, JSON.stringify(JSON.parse(cookie), null, 2));
+				writeFileSync(currentDirAccount, JSON.stringify(JSON.parse(cookie), null, 2));
 			}
 			return await getAppStateToLogin();
 		}
@@ -702,6 +709,7 @@ async function startBot(loginWithEmail) {
 	}
 
 	log.info("LOGIN FACEBOOK", getText('login', 'currentlyLogged'));
+    log.info("CURRENT ACCOUNT", `Using: ${path.basename(global.client.dirAccount)} (${global.client.currentAccountIndex + 1}/${global.client.accountFiles.length})`);
 
 	let appState;
 	try {
@@ -713,7 +721,7 @@ async function startBot(loginWithEmail) {
 
 	changeFbStateByCode = true;
 	appState = filterKeysAppState(appState);
-	writeFileSync(dirAccount, JSON.stringify(appState, null, 2));
+	writeFileSync(global.client.dirAccount, JSON.stringify(appState, null, 2));
 	setTimeout(() => changeFbStateByCode = false, 1000);
 	
 	(function loginBot(appState) {
@@ -744,7 +752,7 @@ async function startBot(loginWithEmail) {
 							if (facebookAccount.i_user)
 								pushI_user(appState, facebookAccount.i_user);
 							changeFbStateByCode = true;
-							writeFileSync(dirAccount, JSON.stringify(filterKeysAppState(appState), null, 2));
+							writeFileSync(global.client.dirAccount, JSON.stringify(filterKeysAppState(appState), null, 2));
 							setTimeout(() => changeFbStateByCode = false, 1000);
 							log.info("REFRESH COOKIE", getText('login', 'refreshCookieSuccess'));
 							return startBot(appState);
@@ -804,6 +812,7 @@ async function startBot(loginWithEmail) {
 			log.info("PREFIX", global.GoatBot.config.prefix);
 			log.info("LANGUAGE", global.GoatBot.config.language);
 			log.info("BOT NICK NAME", global.GoatBot.config.nickNameBot || "GOAT BOT");
+			log.info("CURRENT ACCOUNT FILE", path.basename(global.client.dirAccount));
 			
 			let dataGban;
 			try {
@@ -862,11 +871,11 @@ async function startBot(loginWithEmail) {
 			if (global.GoatBot.config.autoRefreshFbstate == true) {
 				changeFbStateByCode = true;
 				try {
-					writeFileSync(dirAccount, JSON.stringify(filterKeysAppState(api.getAppState()), null, 2));
-					log.info("REFRESH FBSTATE", getText('login', 'refreshFbstateSuccess', path.basename(dirAccount)));
+					writeFileSync(global.client.dirAccount, JSON.stringify(filterKeysAppState(api.getAppState()), null, 2));
+					log.info("REFRESH FBSTATE", getText('login', 'refreshFbstateSuccess', path.basename(global.client.dirAccount)));
 				}
 				catch (err) {
-					log.warn("REFRESH FBSTATE", getText('login', 'refreshFbstateError', path.basename(dirAccount)), err);
+					log.warn("REFRESH FBSTATE", getText('login', 'refreshFbstateError', path.basename(global.client.dirAccount)), err);
 				}
 				setTimeout(() => changeFbStateByCode = false, 1000);
 			}
@@ -1158,7 +1167,7 @@ async function startBot(loginWithEmail) {
 				const restart = setInterval(async function () {
 					if (restartListenMqtt.enable == false) {
 						clearInterval(restart);
-						return log.warn("LISTEN_MQTT", getText('login', 'stopRestartListenMessage'));
+						return log.warn("LISTEN MQTT", getText('login', 'stopRestartListenMessage'));
 					}
 					try {
 						await stopListening();
@@ -1178,11 +1187,15 @@ async function startBot(loginWithEmail) {
 
 	if (global.GoatBot.config.autoReloginWhenChangeAccount) {
 		setTimeout(function () {
-			watch(dirAccount, async (type) => {
-				if (type == 'change' && changeFbStateByCode == false && latestChangeContentAccount != fs.statSync(dirAccount).mtimeMs) {
+            if (!latestChangeContentAccount) {
+                latestChangeContentAccount = fs.statSync(global.client.dirAccount).mtimeMs;
+            }
+            
+			watch(global.client.dirAccount, async (type) => {
+				if (type == 'change' && changeFbStateByCode == false && latestChangeContentAccount != fs.statSync(global.client.dirAccount).mtimeMs) {
 					clearInterval(global.intervalRestartListenMqtt);
 					global.compulsoryStopLisening = true;
-					latestChangeContentAccount = fs.statSync(dirAccount).mtimeMs;
+					latestChangeContentAccount = fs.statSync(global.client.dirAccount).mtimeMs;
 					startBot();
 				}
 			});
@@ -1218,7 +1231,7 @@ function monitorAccounts() {
                             accountText, 
                         facebookAccount.userAgent
                     )) {
-                        log.warn("ACCOUNT MONITOR", "Current account cookie may be invalid");
+                        log.warn("ACCOUNT MONITOR", `Current account (${path.basename(global.client.dirAccount)}) cookie may be invalid`);
                     }
                 } catch (e) {
                     // Silent fail
