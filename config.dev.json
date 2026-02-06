@@ -56,7 +56,7 @@
   "dashBoard": {
     "enable": true,
     "expireVerifyCode": 300000,
-    "port": 3001
+    "port": 7108
   },
   "serverUptime": {
     "enable": false,
