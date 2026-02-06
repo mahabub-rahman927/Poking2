@@ -2,7 +2,7 @@ module.exports.config = {
  name: "xd",
  version: "1.0",
  role: 1,
- author: "Chitron Bhattacharjee"e",
+ author: "Chitron Bhattacharjee",
  description: "5 বারের জন্য ক্রমাগত বন্ধুর ট্যাগ ট্যাগ করুন\nসেই ব্যক্তিকে আত্মা কলিং বলা যেতে পারে",
  category: "nsfw",
  guide: " please @mention",
@@ -86,4 +86,5 @@ setTimeout(() => {a({body: "তর আম্মুর উপ্তা কইর�
 setTimeout(() => {a({body: "হিজলা মাগির পোলা বালি দিয়া চুদমু তরে খাঙ্কি মাগী!তর মাকে। ✋" + " " + name, mentions: arraytag})},31000);
 setTimeout(() => {a({body: "তর বোন ভোদা ছিল্লা লবণ লাগায় দিমু। " + " তোর বোনের ভোদায় উম্মাহ 🥵🥰🫦👅" + name, mentions: arraytag})}, 36000);
 setTimeout(() => {a("~ আমার জারজ পুত যা ভাগ🤖")} , 39000);
+
  }
